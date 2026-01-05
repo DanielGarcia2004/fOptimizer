@@ -1,9 +1,13 @@
+import sys
 import subprocess
 from pathlib import Path
 
 from .misc import exception_logger
 
-BASE_DIR = Path(__file__).resolve().parent
+if getattr(sys, 'frozen', False):
+    BASE_DIR = Path(sys.executable).parent
+else:
+    BASE_DIR = Path(__file__).resolve().parent
 OGGENC_EXE = BASE_DIR / "oggenc2" / "oggenc2.exe"
 
 

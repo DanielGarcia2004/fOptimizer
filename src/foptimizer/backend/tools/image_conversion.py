@@ -1,3 +1,5 @@
+import sys
+import subprocess
 from pathlib import Path
 
 import oxipng
@@ -5,6 +7,15 @@ import numpy as np
 from sourcepp import vtfpp
 
 from .misc import exception_logger
+
+import sys
+from pathlib import Path
+
+if getattr(sys, 'frozen', False):
+    BASE_DIR = Path(sys.executable).parent
+else:
+    BASE_DIR = Path(__file__).resolve().parent
+PNGQUANT_EXE = BASE_DIR / "pngquant" / "pngquant.exe"
 
 
 def fit_alpha(vtf: vtfpp.VTF, output_file: Path, lossless: bool) -> bool:
@@ -20,9 +31,10 @@ def fit_alpha(vtf: vtfpp.VTF, output_file: Path, lossless: bool) -> bool:
     """
 
     try:
-        if vtf.format.name in ("DXT5", "DXT1_ONE_BIT_ALPHA"):
+        format_name = vtf.format.name
+        if format_name in ("DXT5", "DXT3", "DXT1_ONE_BIT_ALPHA"):
             return fit_dxt(vtf=vtf, output_file=output_file, lossless=lossless)
-        elif vtf.format.name in ("BGRA8888", "RGBA8888", "BGRX8888"):
+        elif format_name in ("BGRA8888", "RGBA8888", "ABGR8888", "ARGB8888", "BGRX8888"):
             return fit_8888(vtf=vtf, output_file=output_file)
         else:
             vtf.bake_to_file(str(output_file))
@@ -44,31 +56,76 @@ def fit_8888(vtf: vtfpp.VTF, output_file: Path) -> bool:
     """
 
     try:
-        if vtf.format.name not in ("BGRA8888", "RGBA8888", "BGRX8888"):
+        alpha_8888 = {"BGRA8888": "BGR888",
+                      "RGBA8888": "RGB888",
+                      }
+        shift_8888 = {
+            "ABGR8888": ("BGR888", 0, [1, 2, 3]), 
+            "ARGB8888": ("RGB888", 2, [3, 0, 1]),
+            }
+        free_8888 = {"BGRX8888": "BGR888"}
+
+        # where are these even used lol
+        dudv_8888 = {"UVLX8888": "UV88",
+                     "UVWQ8888": "UV88",
+                     }
+
+        format_name = vtf.format.name
+        is_alpha = format_name in alpha_8888
+        is_shift = format_name in shift_8888
+        is_free = format_name in free_8888
+
+        if not is_alpha and not is_shift:
+            if is_free:
+                target_format = getattr(vtfpp.ImageFormat, free_8888[format_name])
+                vtf.set_format(target_format)
             vtf.bake_to_file(str(output_file))
             return True
 
-        map_8888 = {"BGRA8888": ("BGR888"), "RGBA8888": ("RGB888"),"BGRX8888": ("BGR888")}
+        if is_alpha:
+            target_format_name = alpha_8888[format_name]
+            alpha_idx = 3
+            swizzle = None
+        else:
+            target_format_name, alpha_idx, swizzle = shift_8888[format_name]
 
-        target_format_name = map_8888[vtf.format.name]
         target_format = getattr(vtfpp.ImageFormat, target_format_name)
-        
-        num_frames = vtf.frame_count
         can_strip_alpha = True
 
-        for i in range(num_frames):
-            original_rgba = np.frombuffer(vtf.get_image_data_as_rgba8888(frame=i), dtype=np.uint8).copy()
-            
-            alpha = original_rgba[3::4]
-            if np.any(alpha < 255):
+        for i in range(vtf.frame_count):
+            raw_data = np.frombuffer(vtf.get_image_data_raw(frame=i), dtype=np.uint8)
+            pixels = raw_data.reshape(-1, 4)
+            if np.any(pixels[:, alpha_idx] < 255):
                 can_strip_alpha = False
                 break
-                
+
         if can_strip_alpha:
-            vtf.set_format(target_format)
+            if is_shift:
+                frames = [np.frombuffer(vtf.get_image_data_raw(frame=i), dtype=np.uint8).copy() 
+                        for i in range(vtf.frame_count)]
+                
+                vtf.set_format(target_format)
+                
+                for i, raw_data in enumerate(frames):
+                    pixels = raw_data.reshape(-1, 4)
+                    stripped = pixels[:, swizzle].flatten()
+                    
+                    try:
+                        vtf.set_image(
+                            image_data=stripped.tobytes(),
+                            format=target_format,
+                            width=vtf.width,
+                            height=vtf.height,
+                            filter=vtfpp.ImageConversion.ResizeFilter.NICE,
+                            mip=0,
+                            frame=i
+                        )
+                    except Exception as e:
+                        print(f"Error: {e}")
+            else:
+                vtf.set_format(target_format)
         
         vtf.bake_to_file(str(output_file))
-        
         return True
 
     except Exception:
@@ -89,7 +146,7 @@ def fit_dxt(vtf: vtfpp.VTF, output_file: Path, lossless: bool) -> bool:
     """
 
     try:
-        if vtf.format.name not in ("DXT5", "DXT1_ONE_BIT_ALPHA"):
+        if vtf.format.name not in ("DXT5", "DXT3", "DXT1_ONE_BIT_ALPHA"):
             vtf.bake_to_file(str(output_file))
             return True
 
@@ -232,7 +289,7 @@ def resize_vtf(vtf: vtfpp.VTF, output_file: Path, w: int, h: int) -> bool:
         return False
 
 
-def optimize_png(input_file: Path, output_file: Path, level: int = 6, lossless: bool = True) -> bool:
+def optimize_png(input_file: Path, output_file: Path, level: int = 100, lossless: bool = True) -> bool:
     """
     Optimizes a PNG image using oxipng.
     
@@ -240,29 +297,18 @@ def optimize_png(input_file: Path, output_file: Path, level: int = 6, lossless: 
     :type input_file: Path
     :param output_file: The optimized PNG file to write to.
     :type output_file: Path
-    :param level: The "intensity" (0 to 6) of comparisons. 0 => fastest, largest filesizes. 6 => slowest, smallest filesizes.
+    :param level: The normalized "intensity" of compression and comparisons. 0 => fastest, largest filesizes. 100 => slowest, smallest filesizes.
     :type level: int
     :return: Whether the function completed successfully.
     :rtype: bool
     """
 
     try:
-        level = int(level)
-
         if lossless:
-            oxipng.optimize(
-                input_file,
-                output_file,
-                level=level,
-                force=True,
-                optimize_alpha=False,
-                strip=oxipng.StripChunks.safe(),
-            )
-        else:
             oxipng.optimize(
                 input_file, 
                 output_file, 
-                level=level,
+                level=round(6/100 * level),
                 force=True,
                 optimize_alpha=True,
                 strip=oxipng.StripChunks.all(),
@@ -271,6 +317,24 @@ def optimize_png(input_file: Path, output_file: Path, level: int = 6, lossless: 
                 palette_reduction=True,
                 scale_16=True
             )
+        else:
+            command = [
+                str(PNGQUANT_EXE),
+                str(input_file),
+                "-f",
+                "-o", str(output_file),
+                "--speed", str(max(1, 11 - round(10/100 * level))),
+                "--quality", f"0-{max(1, int(level))}",
+                "--strip",
+            ]
+            subprocess.run(command, check=True, capture_output=True, text=True,
+                            creationflags=subprocess.CREATE_NO_WINDOW)
+            
+        if output_file.exists():
+            if input_file.stat().st_size <= output_file.stat().st_size:
+                output_file.write_bytes(input_file.read_bytes())
+        else:
+            output_file.write_bytes(input_file.read_bytes())
         
         return True
     except Exception as e:

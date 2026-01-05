@@ -15,55 +15,63 @@ ctk.set_default_color_theme("assets/foptimizer-theme.json")
 DEFAULT_WIDTH = 760
 DEFAULT_HEIGHT = 540
 
+"""
+    "Name": {
+        "description": "Describes the function briefly.", 
+        "lossless_option": Default/None,
+        "quality_range" : (Minimum, Maximum, Default),
+        "remove_option" : Default/None,
+        "function" : backend.logic_function_name,
+    },
+"""
+
 OPTIMIZATIONS = {
     "Fit Alpha": {
         "description": "Strip unnecessary channels from VTF images, 'fitting' their formats as exactly as possible.", 
         "lossless_option": True,
-        "quality_range" : (None, None),
-        "remove_option" : False,
+        "quality_range" : None,
+        "remove_option" : None,
         "function" : backend.logic_fit_alpha,
     },
     "Remove Redundant Files": {
         "description": "Removes files unused by both modern engine branches and modding tools.", 
-        "lossless_option": False,
-        "quality_range" : (None, None),
+        "lossless_option": None,
+        "quality_range" : None,
         "remove_option" : True,
         "function": backend.logic_remove_unused_files,
     },
     "Shrink Solid Colour Images": {
         "description": "Shrinks all solid-colour VTFs to a minimum resolution, keeping its usage identical but filesize minimal.", 
-        "lossless_option": False,
-        "quality_range" : (None, None),
-        "remove_option" : False,
+        "lossless_option": None,
+        "quality_range" : None,
+        "remove_option" : None,
         "function": backend.logic_shrink_solid,
     },
     "PNG Optimization": {
-        "description": "Optimizes a folder of PNG images losslessly using oxipng.", 
-        "lossless_option": True,
-        "quality_range" : (0, 6),
-        "remove_option" : False,
+        "description": "Optimizes PNG images and strips unnecessary metadata.", 
+        "lossless_option": False,
+        "quality_range" : (0, 100, 75),
+        "remove_option" : None,
         "function": backend.logic_optimize_png,
     },
     "Halve Normals": {
         "description": "Halves the dimensions of all normal map VTF images: also encodes a flag to prevent halving the same image twice.", 
-        "lossless_option": False,
-        "quality_range" : (None, None),
-        "remove_option" : False,
+        "lossless_option": None,
+        "quality_range" : None,
+        "remove_option" : None,
         "function": backend.logic_halve_normals,
     },
     "WAV to OGG": {
-        "description": "Converts all WAV files to OGG files, trading slight quality loss for a large filesize reduction.\n\
-WARNING: you have to change all references to .wav files to .ogg in code and on maps!", 
-        "lossless_option": False,
-        "quality_range" : (-1, 10),
+        "description": "Converts all WAV files to OGG files, trading slight quality loss for a large filesize reduction.\nWARNING: you have to change all references to .wav files to .ogg in code and on maps!", 
+        "lossless_option": None,
+        "quality_range" : (-1, 10, 10),
         "remove_option" : True,
         "function": backend.logic_wav_to_ogg,
     },
     "Remove Unaccessed VTFs": {
-        "description": "Removes all VTF files not referenced by any VMT in the input folder.\n\
-WARNING: this will remove VTF images referenced only in code!",
-        "lossless_option": False,
-        "quality_range" : (None, None),
+        "description": "Removes all VTF files not referenced by any VMT in the input folder.\nWARNING: this will remove VTF images referenced only in code!",
+        "lossless_option": None,
+        "quality_range" : None,
         "remove_option" : True,
         "function": backend.logic_remove_unaccessed_vtfs,
     },
@@ -84,6 +92,10 @@ class FolderSelectionFrame(ctk.CTkFrame):
         
         self.browse_button = ctk.CTkButton(self, text="Browse", width=100, command=self.browse, fg_color="#b65033", hover_color="#7e3825")
         self.browse_button.grid(row=1, column=1, padx=(5, 10), pady=(5, 10))
+
+        self.placeholder_text = placeholder_text
+        self.border_color = self.field._border_color
+        self.placeholder_text_color = self.field._placeholder_text_color
     
     def browse(self):
         folder = filedialog.askdirectory(title="Select Folder")
@@ -94,6 +106,10 @@ class FolderSelectionFrame(ctk.CTkFrame):
     def get_folder(self):
         path_text = self.field.get().strip()
         return path_text if path_text != "" else None
+    
+    def on_error(self):
+        self.field.configure(border_color="#972222", placeholder_text="Please select a folder", placeholder_text_color="#972222")
+        self.after(2000, lambda: self.field.configure(border_color=self.border_color, placeholder_text=self.placeholder_text, placeholder_text_color=self.placeholder_text_color))
 
 
 class DescriptionLabel(ctk.CTkLabel):
@@ -120,7 +136,7 @@ class ProgressBar(ctk.CTkProgressBar):
 
 class OptimizationButton(ctk.CTkFrame):
     def __init__(self, root, label, description, lossless_option, remove_option, function,
-                 input_getter, output_getter, desc_widget: DescriptionLabel, progress_bar: ProgressBar, quality_range=(float, float)):
+                 input_getter, output_getter, desc_widget: DescriptionLabel, progress_bar: ProgressBar, quality_range=(float, float, float)):
         super().__init__(root)
 
         self.label = label
@@ -128,7 +144,7 @@ class OptimizationButton(ctk.CTkFrame):
         self.lossless_option = lossless_option
         self.remove_option = remove_option
         self.function = function
-        self.range = quality_range
+        self.quality_range = quality_range
 
         self.get_input = input_getter
         self.get_output = output_getter
@@ -148,11 +164,11 @@ class OptimizationButton(ctk.CTkFrame):
 
         col_index = 0
 
-        if self.range != (None, None):
-            self.quality_slider = ctk.CTkSlider(self.options_frame, from_=self.range[0], to=self.range[1],
-                                                number_of_steps=self.range[1] - self.range[0], command = self.on_slider_change,
-                                                button_color="#b65033", button_hover_color="#7e3825", progress_color="#7e3825", border_width=1)
-            self.quality_slider.set(self.range[1])
+        if quality_range is not None:
+            self.quality_slider = ctk.CTkSlider(self.options_frame, from_=self.quality_range[0], to=self.quality_range[1],
+                                                number_of_steps=self.quality_range[1] - self.quality_range[0], command = self.on_slider_change,
+                                                button_color="#b65033", button_hover_color="#7e3825", progress_color="#7e3825")
+            self.quality_slider.set(self.quality_range[2])
             self.quality_slider.grid(row=0, column=col_index, padx=5, pady=0, sticky="ew")
             self.quality_slider.grid_columnconfigure(0, weight=1)
             col_index+=1
@@ -163,21 +179,23 @@ class OptimizationButton(ctk.CTkFrame):
 
             tip(self.quality_slider, message="Adjust the level for this optimization. Higher levels result in better compression but often take longer.")
             
-        if lossless_option:
+        if lossless_option is not None:
             self.lossless_check = ctk.CTkCheckBox(self.options_frame, text="Lossless", fg_color="#b65033",
                                                   hover_color="#7e3825", checkbox_height=20, checkbox_width=20, border_width=1)
+            lossless_option and self.lossless_check.toggle()
             self.lossless_check.grid(row=0, column=col_index, padx=5, pady=0, sticky="ew")
             col_index+=1
 
             tip(self.lossless_check, message="Enable 'lossless' compression for this optimization.")
 
-        if remove_option:
+        if remove_option is not None:
             self.remove_check = ctk.CTkCheckBox(self.options_frame, text="Remove Files", fg_color="#b65033",
                                                 hover_color="#7e3825", checkbox_height=20, checkbox_width=20, border_width=1)
+            remove_option and self.remove_check.toggle()
             self.remove_check.grid(row=0, column=col_index, padx=5, pady=0, sticky="ew")
             col_index+=1
 
-            tip(self.remove_check, message="Remove the files from the input folder after optimization.")
+            tip(self.remove_check, message="Remove the files from the input folder after optimization.\nLeave disabled to simply copy the remaining files to the output folder.")
 
         if col_index == 0:
             self.options_frame.destroy()
@@ -190,12 +208,26 @@ class OptimizationButton(ctk.CTkFrame):
 
     def on_slider_change(self, event):
         self.quality_label.configure(text=f"{self.quality_slider.get()}")
+    
+    def set_state_all_children(self, state: str):
+        if hasattr(self, "button"):
+            self.button.configure(state=state)
+        if hasattr(self, "quality_slider"):
+            self.quality_slider.configure(state=state)
+        if hasattr(self, "lossless_check"):
+            self.lossless_check.configure(state=state)
+        if hasattr(self, "remove_check"):
+            self.remove_check.configure(state=state)
+
 
     def button_callback(self):
         input_path = self.get_input()
         output_path = self.get_output() or input_path
 
         if not input_path:
+            root = self.winfo_toplevel()
+            if hasattr(root, "input_frame"):
+                root.input_frame.on_error()
             return
         
         kwargs = {
@@ -203,18 +235,22 @@ class OptimizationButton(ctk.CTkFrame):
             "output_dir": Path(output_path),
         }
 
-        if self.range != (None, None):
+        if self.quality_range is not None:
             kwargs["level"] = self.quality_slider.get()
                 
-        if self.lossless_option:
+        if self.lossless_option is not None:
             kwargs["lossless"] = self.lossless_check.get()
             
-        if self.remove_option:
+        if self.remove_option is not None:
             kwargs["remove"] = self.remove_check.get()
 
         kwargs["progress_bar"] = self.progress_bar
 
-        self.button.configure(state="disabled")
+        root = self.winfo_toplevel()
+        if hasattr(root, "root_scrollable"):
+            for i in root.root_scrollable.winfo_children():
+                if isinstance(i, OptimizationButton):
+                    i.set_state_all_children("disabled")
 
         optimization_thread = threading.Thread(
                 target=self.function, 
@@ -228,7 +264,11 @@ class OptimizationButton(ctk.CTkFrame):
             if thread.is_alive():
                 self.after(100, lambda: self.monitor_thread(thread))
             else:
-                self.button.configure(state="normal")
+                root = self.winfo_toplevel()
+                if hasattr(root, "root_scrollable"):
+                    for i in root.root_scrollable.winfo_children():
+                        if isinstance(i, OptimizationButton):
+                            i.set_state_all_children("normal")
 
 
 class AppInfoFrame(ctk.CTkFrame):

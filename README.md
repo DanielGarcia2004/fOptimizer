@@ -1,4 +1,7 @@
 # fOptimizer
+![Version](https://img.shields.io/badge/version-1.0.0-orange)
+![License](https://img.shields.io/github/license/fxington/foptimizer)
+![Issues](https://img.shields.io/github/issues/fxington/foptimizer)
 
 ## Overview
 
@@ -9,30 +12,31 @@ foxington's Optimizer is a Source format optimizer and redundancy-culling progra
 fOptimizer for Windows can be downloaded via the
 [Releases](https://github.com/fxington/foptimizer/releases) section on its GitHub page.
 
-Unzip the .zip archive, then execute **run.bat** to install dependencies into a virtual environment and start the GUI.
+Unzip the .zip archive, then run **start_foptimizer.bat** to install dependencies into a virtual environment and initialize the GUI.
 
-MacOS and Linux releases are not currently supported.
-
-The current minimum supported Python version is **3.10**.
-
-fOptimizer follows Semantic Versioning.
+The earliest officially-supported Python version is **3.11**.
 
 ## Usage
 
 fOptimizer functions are primarily intended to be GUI-based. Hover over each button or element to view a tooltip regarding its intended usage.
 
+To integrate fOptimizer functions into your own programs, install fOptimizer as an editable package using ```python -m pip install -e path/to/foptimizer```. Then, simply ```import foptimizer``` into your own project.
+
 ## Contributing
 
-Any and all suggestions, improvements, and bug fixes are welcome and will be accepted via pull request on GitHub. Bug reports must be created via a GitHub issue. If you believe you have found a solution to an unreported bug,
-you are welcome to submit the fix with the bug report. Other contributions not mentioned are open for discussion via a feature request.
+Any and all suggestions, improvements, and bug fixes are welcome. Bug reports must be created via a GitHub issue. If you believe you have found a solution to a bug,
+please submit a bug report outlining the cause and a fix you have found.
+
+New avenues for optimization are always appreciated and will be considered via feature request.
 
 ## License
 
-fOptimizer is open-source software, distributed under the MIT license.
+fOptimizer is an open-source project distributed under the MIT license.
 
 ## Credits & Third-Party Tools
 This project utilizes the following incredible tools:
 * [pyoxipng](https://github.com/nfrasser/pyoxipng) - Python wrapper by Nick Frasser (nfrasser) for oxipng, a multithreaded PNG optimizer by Joshua Holmer (shssoichiro).
+* [PNGQuant](https://pngquant.org/) - Lossy PNG compression library and associated CLI by Kornel Lesiński.
 * [oggenc2](https://rarewares.org/) - Ogg Vorbis CLI encoder by RareWares.
 * [SourcePP](https://github.com/craftablescience/sourcepp) - Source engine format parsing library by Laura Lewis (CraftableScience).
 * [Crowbar-Command-Line](https://github.com/UltraTechX/Crowbar-Command-Line) - Source .MDL CLI decompiler by UltraTechX based off of original Crowbar program by ZeqMacaw.
