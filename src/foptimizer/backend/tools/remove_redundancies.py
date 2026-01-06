@@ -1,4 +1,3 @@
-import shutil
 from pathlib import Path
 
 from .misc import exception_logger
@@ -22,6 +21,7 @@ VMT_PARAMS = (
     "$underwateroverlay", "$backlighttexture", "$displacementmap",
 )
 
+
 FILE_BLACKLIST = (
     ".360.vtx",
     ".dx80.vtx",
@@ -29,7 +29,8 @@ FILE_BLACKLIST = (
     ".xbox.vtx",
 )
 
-def remove_unused_files(input_dir: Path, output_dir: Path, remove: bool, progress_window=None) -> bool:
+
+def remove_unused_files(input_dir: Path, output_dir: Path, remove: bool) -> bool:
     """
     Copies used files to output_dir while skipping unused legacy formats.
     
@@ -46,37 +47,28 @@ def remove_unused_files(input_dir: Path, output_dir: Path, remove: bool, progres
 
     try:
         if not input_dir.is_dir():
-            if progress_window:
-                progress_window.update(1, 1)
             return True
 
-        files = [f for f in input_dir.rglob("*") if f.is_file()]
-        total = len(files)
-        processed = 0
+        for file_path in input_dir.rglob("*"):
+            if file_path.is_file():
+                if any(file_path.name.lower().endswith(ext) for ext in FILE_BLACKLIST):
+                    if remove:
+                        file_path.unlink()
 
-        for file_path in files:
-            if any(file_path.name.lower().endswith(ext) for ext in FILE_BLACKLIST):
-                if remove:
-                    file_path.unlink()
-            else:
-                if not remove:
+                else:
                     relative_path = file_path.relative_to(input_dir)
                     target_path = output_dir / relative_path
+
                     target_path.parent.mkdir(parents=True, exist_ok=True)
-                    try: shutil.copy(file_path, target_path)
-                    except: pass
-            
-            processed += 1
-            if progress_window:
-                progress_window.update(processed, total)
+                    target_path.write_bytes(file_path.read_bytes())
         
         return True
-    except Exception as e:
-        exception_logger(e)
+    except Exception:
+        exception_logger(exc=Exception("remove_unused_files failed"))
         return False
 
 
-def remove_unaccessed_vtfs(input_dir: Path, output_dir: Path, remove: bool = False, progress_window=None) -> bool:
+def remove_unaccessed_vtfs(input_dir: Path, output_dir: Path, remove: bool = False) -> bool:
     """
     Scans for VTF files not referenced by any VMT in the directory tree.
     
@@ -88,20 +80,11 @@ def remove_unaccessed_vtfs(input_dir: Path, output_dir: Path, remove: bool = Fal
     """
     try:
         if not input_dir.is_dir():
-            if progress_window:
-                progress_window.update(1, 1)
             return True
 
         vmt_deps = set()
         vmt_files = list(input_dir.rglob("*.vmt"))
-        vtf_files = list(input_dir.rglob("*.vtf"))
         
-        total = len(vmt_files) + len(vtf_files)
-        if not remove:
-            total += len(vmt_files)
-        
-        processed = 0
-
         for vmt_path in vmt_files:
             with vmt_path.open('r', errors='ignore') as f:
                 for line in f:
@@ -113,12 +96,10 @@ def remove_unaccessed_vtfs(input_dir: Path, output_dir: Path, remove: bool = Fal
                             if not tex.endswith('.vtf'):
                                 tex += '.vtf'
                             vmt_deps.add(tex)
-            processed += 1
-            if progress_window:
-                progress_window.update(processed, total)
 
-        for vtf_path in vtf_files:
+        for vtf_path in input_dir.rglob("*.vtf"):
             rel_path = vtf_path.relative_to(input_dir).as_posix().lower()
+            
             rel_path_no_mats = rel_path.replace("materials/", "", 1) if rel_path.startswith("materials/") else rel_path
             
             is_used = (rel_path in vmt_deps or rel_path_no_mats in vmt_deps)
@@ -130,24 +111,15 @@ def remove_unaccessed_vtfs(input_dir: Path, output_dir: Path, remove: bool = Fal
                 if not remove:
                     target_path = output_dir / vtf_path.relative_to(input_dir)
                     target_path.parent.mkdir(parents=True, exist_ok=True)
-                    try: shutil.copy(vtf_path, target_path)
-                    except: pass
-            
-            processed += 1
-            if progress_window:
-                progress_window.update(processed, total)
+                    target_path.write_bytes(vtf_path.read_bytes())
 
         if not remove:
             for vmt_path in vmt_files:
                 target_path = output_dir / vmt_path.relative_to(input_dir)
                 target_path.parent.mkdir(parents=True, exist_ok=True)
-                try: shutil.copy(vmt_path, target_path)
-                except: pass
-                processed += 1
-                if progress_window:
-                    progress_window.update(processed / total)
+                target_path.write_bytes(vmt_path.read_bytes())
 
         return True
-    except Exception as e:
-        exception_logger(e)
+    except Exception:
+        exception_logger(exc=Exception("remove_unaccessed_vtfs failed"))
         return False
