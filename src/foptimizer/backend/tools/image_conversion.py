@@ -3,7 +3,6 @@ import subprocess
 import shutil
 from pathlib import Path
 
-import oxipng
 import numpy as np
 from sourcepp import vtfpp
 
