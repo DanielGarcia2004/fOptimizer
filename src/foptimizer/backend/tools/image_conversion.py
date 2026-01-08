@@ -309,11 +309,7 @@ def resize_vtf(input_file: Path, output_file: Path, w: int, h: int) -> bool:
             except: pass
             return True
         
-        original_format = vtf.format
-
-        vtf.set_size(w, h, vtfpp.ImageConversion.ResizeFilter.NICE) 
-        vtf.set_format(original_format)
-
+        vtf.set_size(w, h, vtfpp.ImageConversion.ResizeFilter.NICE)
         vtf.bake_to_file(output_file)
 
         return True
