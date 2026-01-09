@@ -18,8 +18,7 @@ def handle_batch_parallel(input_dir: Path, output_dir: Path, ext: tuple[str], op
     total = len(files)
     
     if total == 0:
-        if progress_window:
-            progress_window.update(0, 0)
+        if progress_window: progress_window.update(0, 0)
         return
 
     with ProcessPoolExecutor() as executor:
@@ -34,8 +33,7 @@ def handle_batch_parallel(input_dir: Path, output_dir: Path, ext: tuple[str], op
             except Exception as e:
                 print(f"Error processing {futures[future].name}: {e}")
             
-            if progress_window:
-                progress_window.update(i, total)
+            if progress_window: progress_window.update(i, total)
 
 
 def logic_optimize_png(input_dir: Path, output_dir: Path, level: int = 6, lossless: bool = True, progress_window=None):

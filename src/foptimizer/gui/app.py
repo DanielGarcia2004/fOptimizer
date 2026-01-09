@@ -28,6 +28,14 @@ DEFAULT_HEIGHT = 600
 """
 
 OPTIMIZATIONS = {
+    "Remove Duplicate VTFs": {
+        "description": "Collects all duplicate VTF images into a shared directory and redirects VMTs to that single VTF image.",
+        "lossless_option": None,
+        "level_range" : None,
+        "remove_option" : None,
+        "one_click": True,
+        "function": backend.logic_remove_duplicate_vtfs,
+    },
     "Fit Alpha": {
         "description": "Strip unnecessary channels from VTF images, 'fitting' their formats as exactly as possible.",
         "lossless_option": True,
@@ -35,14 +43,6 @@ OPTIMIZATIONS = {
         "remove_option" : None,
         "one_click": True,
         "function" : backend.logic_fit_alpha,
-    },
-    "Remove Duplicate VTFs": {
-        "description": "Collects all duplicate VTF images into a shared directory and redirects VMTs to that single VTF image.\nWARNING: this can only be used on single addons at a time!",
-        "lossless_option": None,
-        "level_range" : None,
-        "remove_option" : None,
-        "one_click": True,
-        "function": backend.logic_remove_duplicate_vtfs,
     },
     "Remove Redundant Files": {
         "description": "Removes files unused by both modern engine branches and modding tools.", 
@@ -160,14 +160,36 @@ class ProgressWindow(ctk.CTkFrame):
         self.progress_text = ctk.CTkLabel(self, text="0 of 0 files processed")
         self.progress_text.grid(row=1, column=0, padx=0, pady=0, sticky="ew")
         
-    def update(self, processed: int, total: int):
-        self.progress_bar.set(processed/total)
-        self.progress_text.configure(text=f"{processed} of {total} files processed")
+        self.processed = 0
+        self.total = 0
+        
+        self.start_time = 0
+        self.end_time = 0
+        self.perftime = 0
+        
+        self.error_text = None
     
-    def complete(self, time: int):
-        complete_text = self.progress_text._text
-        time = round(time, 2)
-        self.progress_text.configure(text=f"Optimization complete: {complete_text} in {time} seconds")
+    def start(self):
+        self.error_text = None
+        self.start_time = perf_counter()
+        
+    def update(self, processed: int, total: int):
+        self.processed = processed
+        self.total = total
+        self.progress_bar.set(self.processed/self.total)
+        self.progress_text.configure(text=f"{self.processed} of {self.total} files processed")
+    
+    def complete(self):
+        if self.error_text:
+            return
+        
+        self.end_time = perf_counter()
+        self.perftime = round(self.end_time - self.start_time, 2)
+        self.progress_text.configure(text=f"Optimization complete: {self.processed} of {self.total} files processed in {self.perftime} seconds")
+        
+    def error(self, error_text):
+        self.error_text = error_text
+        self.progress_text.configure(text=f"{self.error_text}")
 
 
 class OptimizationButton(ctk.CTkFrame):
@@ -204,9 +226,6 @@ class OptimizationButton(ctk.CTkFrame):
         self.desc_widget = desc_widget
         self.progress_window = progress_window
         self.folder_selection = folder_selection
-
-        self.start = None
-        self.stop = None
 
         self.grid_columnconfigure((0, 1), weight=1, uniform="group1")
 
@@ -295,8 +314,7 @@ class OptimizationButton(ctk.CTkFrame):
                 daemon=True
                 )
 
-        self.start = perf_counter()
-        
+        self.progress_window.start()
         optimization_thread.start()
         self.monitor_button_callback_thread(optimization_thread)
 
@@ -304,10 +322,7 @@ class OptimizationButton(ctk.CTkFrame):
         if thread.is_alive():
             self.after(100, lambda: self.monitor_button_callback_thread(thread))
         else:
-            self.stop = perf_counter()
-            sec_elapsed = self.stop - self.start
-            self.progress_window.complete(sec_elapsed)
-
+            self.progress_window.complete()
             OptimizationButton.set_state_all_instances("normal")
 
 

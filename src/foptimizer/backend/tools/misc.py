@@ -1,5 +1,7 @@
 import traceback
+import shutil
 from pathlib import Path
+
 import tomllib
 
 def exception_logger(exc: Exception) -> None:
@@ -22,3 +24,15 @@ def get_project_version():
             return data["project"]["version"]
     except Exception:
         return "0.0.0 (unknown)"
+
+def fop_copy(src: Path, dst: Path, mode: int = 1) -> bool:
+    try:
+        if mode == 1:
+            shutil.copy(src, dst)
+        else:
+            shutil.copy2(src, dst)
+            
+    except FileExistsError:
+        pass
+    except Exception as e:
+        exception_logger(e)

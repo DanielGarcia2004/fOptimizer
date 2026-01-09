@@ -11,7 +11,7 @@ else:
 OGGENC_EXE = BASE_DIR / "oggenc2" / "oggenc2.exe"
 
 
-def wav_to_ogg(input_file: Path, output_file: Path, quality: int = 5, remove: bool = True) -> bool:
+def wav_to_ogg(input_file: Path, output_file: Path, quality: int = 5, remove: bool = True, progress_window=None) -> bool:
     """
     Converts a WAV audio file to an OGG audio file using oggenc2
     
@@ -40,4 +40,5 @@ def wav_to_ogg(input_file: Path, output_file: Path, quality: int = 5, remove: bo
         return True
     except Exception as e:
         exception_logger(e)
+        if progress_window: progress_window.error("WAV to OGG failed with an unknown error.")
         return False

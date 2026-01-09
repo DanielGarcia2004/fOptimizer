@@ -1,12 +1,11 @@
 import sys
 import subprocess
-import shutil
 from pathlib import Path
 
 import numpy as np
 from sourcepp import vtfpp
 
-from .misc import exception_logger
+from .misc import exception_logger, fop_copy
 
 if getattr(sys, 'frozen', False):
     BASE_DIR = Path(sys.executable).parent
@@ -15,7 +14,8 @@ else:
 OXIPNG_EXE = BASE_DIR / "oxipng" / "oxipng.exe"
 PNGQUANT_EXE = BASE_DIR / "pngquant" / "pngquant.exe"
 
-FOPTIMIZER_FLAG_INDEX = 19
+FOPTIMIZER_HALVE_INDEX = 19
+FOPTIMIZER_SHRINK_INDEX = 20
 SUPPORTED_FORMATS = (("DXT5", "DXT3", "DXT1_ONE_BIT_ALPHA"),
                      ("BGRA8888", "RGBA8888", "ABGR8888", "ARGB8888", "BGRX8888")
 )
@@ -64,8 +64,7 @@ def fit_8888(input_file: Path, output_file: Path) -> bool:
         vtf = vtfpp.VTF(input_file)
         
         if vtf.format.name not in SUPPORTED_FORMATS[1]:
-            try: shutil.copy(input_file, output_file)
-            except: pass
+            fop_copy(src=input_file, dst=output_file, mode=1)
             return True
 
         alpha_8888 = {"BGRA8888": "BGR888",
@@ -97,8 +96,7 @@ def fit_8888(input_file: Path, output_file: Path) -> bool:
                 vtf.set_format(target_format)
                 vtf.bake_to_file(output_file)
             else:
-                try: shutil.copy(input_file, output_file)
-                except: pass
+                fop_copy(src=input_file, dst=output_file, mode=1)
             return True
 
         if is_alpha:
@@ -145,8 +143,7 @@ def fit_8888(input_file: Path, output_file: Path) -> bool:
                 vtf.set_format(target_format)
             vtf.bake_to_file(output_file)
         else:
-            try: shutil.copy(input_file, output_file)
-            except: pass
+            fop_copy(src=input_file, dst=output_file, mode=1)
             
         return True
 
@@ -171,8 +168,7 @@ def fit_dxt(input_file: Path, output_file: Path, lossless: bool) -> bool:
         vtf = vtfpp.VTF(input_file)
         
         if vtf.format.name not in SUPPORTED_FORMATS[0]:
-            try: shutil.copy(input_file, output_file)
-            except: pass
+            fop_copy(src=input_file, dst=output_file, mode=1)
             return True
 
         original_format = vtf.format
@@ -188,8 +184,7 @@ def fit_dxt(input_file: Path, output_file: Path, lossless: bool) -> bool:
 
             if np.all(alpha == 0):
                 # stops images with fully transparent alpha channels (for specularity?) being exported completely black
-                try: shutil.copy(input_file, output_file)
-                except: pass
+                fop_copy(src=input_file, dst=output_file, mode=1)
                 return True
 
             if np.any((alpha > 0) & (alpha < 255)):
@@ -276,15 +271,15 @@ def shrink_solid(input_file: Path, output_file: Path) -> bool:
         pixels = np.frombuffer(image_data, dtype=np.uint8).reshape(-1, 4)
         is_solid = np.all(pixels == pixels[0], axis=0).all()
 
-        if is_solid:
+        if is_solid and not(vtf.flags & (1 << FOPTIMIZER_SHRINK_INDEX)):
             resize_vtf(input_file=input_file,
                        output_file=output_file,
-                       w=4,
-                       h=4
+                       width=4,
+                       height=4,
+                       flag_index=FOPTIMIZER_SHRINK_INDEX
             )
         else:
-            try: shutil.copy(input_file, output_file)
-            except: pass
+            fop_copy(src=input_file, dst=output_file, mode=1)
 
         return True
     except Exception as e:
@@ -292,7 +287,7 @@ def shrink_solid(input_file: Path, output_file: Path) -> bool:
         return False
 
 
-def resize_vtf(input_file: Path, output_file: Path, w: int, h: int) -> bool:
+def resize_vtf(input_file: Path, output_file: Path, width: int, height: int, flag_index: int = None) -> bool:
     """
     Resizes and writes a VTF image.
     
@@ -300,10 +295,10 @@ def resize_vtf(input_file: Path, output_file: Path, w: int, h: int) -> bool:
     :type input_file: Path
     :param output_file: The path of the resized VTF to be written to.
     :type output_file: Path
-    :param w: The width of the resized VTF.
-    :type w: int
-    :param h: The height of the resized VTF.
-    :type h: int
+    :param width: The width of the resized VTF.
+    :type width: int
+    :param height: The height of the resized VTF.
+    :type height: int
     :return: Whether the function completed successfully.
     :rtype: bool
     """
@@ -311,12 +306,12 @@ def resize_vtf(input_file: Path, output_file: Path, w: int, h: int) -> bool:
     try:
         vtf = vtfpp.VTF(input_file)
 
-        if(vtf.width == w and vtf.height == h) or (w < 1 or h < 1):
-            try: shutil.copy(input_file, output_file)
-            except: pass
+        if(vtf.width == width and vtf.height == height) or (width <= 1 or height <= 1):
+            fop_copy(src=input_file, dst=output_file, mode=1)
             return True
         
-        vtf.set_size(w, h, vtfpp.ImageConversion.ResizeFilter.NICE)
+        vtf.set_size(width, height, vtfpp.ImageConversion.ResizeFilter.NICE)
+        if flag_index: vtf.add_flags(1 << flag_index)
         vtf.bake_to_file(output_file)
         return True
 
@@ -366,8 +361,7 @@ def optimize_png(input_file: Path, output_file: Path, level: int = 100, lossless
             
         if input_file.stat().st_size <= output_file.stat().st_size:
             print("input was smaller than output. reverting...")
-            try: shutil.copy(input_file, output_file)
-            except: pass
+            fop_copy(src=input_file, dst=output_file, mode=1)
         
         return True
     except Exception as e:
@@ -391,15 +385,17 @@ def halve_normal(input_file: Path, output_file: Path) -> bool:
         vtf = vtfpp.VTF(input_file)
         
         # checking halve_normal flag against vtf.flags bitmask
-        if is_normal_vtf(input_file) and not (vtf.flags & (1 << FOPTIMIZER_FLAG_INDEX)):
+        if is_normal_vtf(input_file) and not (vtf.flags & (1 << FOPTIMIZER_HALVE_INDEX)):
             width = max(4, vtf.width // 2)
             height = max(4, vtf.height // 2)
             
-            resize_vtf(input_file=input_file, output_file=output_file, w=width, h=height)
-            vtf.add_flags(1 << FOPTIMIZER_FLAG_INDEX)
+            resize_vtf(input_file=input_file,
+                       output_file=output_file,
+                       width=width,
+                       height=height,
+                       flag_index=FOPTIMIZER_HALVE_INDEX)
         else:
-            try: shutil.copy(input_file, output_file)
-            except: pass
+            fop_copy(src=input_file, dst=output_file, mode=1)
 
         return True
     except Exception as e:
