@@ -22,6 +22,7 @@ VMT_PARAMS = (
     "$painttexture", "$detailblendmask", "$reflecttexture",
     "$refracttexture", "$refracttinttexture", "$bottommaterial",
     "$underwateroverlay", "$backlighttexture", "$displacementmap",
+    "$ambientoccltexture", 
 )
 
 VMT_REGEX = re.compile(

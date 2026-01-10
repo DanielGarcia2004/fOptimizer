@@ -21,6 +21,7 @@ VMT_PARAMS = (
     "$painttexture", "$detailblendmask", "$reflecttexture",
     "$refracttexture", "$refracttinttexture", "$bottommaterial",
     "$underwateroverlay", "$backlighttexture", "$displacementmap",
+    "$ambientoccltexture", 
 )
 
 FILE_BLACKLIST = (
