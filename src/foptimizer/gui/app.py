@@ -7,7 +7,7 @@ import customtkinter as ctk
 from CTkToolTip import CTkToolTip as tip
 
 import foptimizer.backend.logic as backend
-from foptimizer.backend.tools.misc import get_project_version
+from foptimizer.backend.tools.misc import get_project_version, dir_size_bytes
 
 
 ctk.set_appearance_mode("dark")
@@ -52,7 +52,7 @@ OPTIMIZATIONS = {
         "one_click": True,
         "function": backend.logic_remove_unused_files,
     },
-    "Shrink Solid Colour Images": {
+    "Shrink Solid Colour VTFs": {
         "description": "Shrinks all solid-colour VTFs to a minimum resolution, keeping its usage identical but filesize minimal.", 
         "lossless_option": None,
         "level_range" : None,
@@ -158,7 +158,12 @@ class ProgressWindow(ctk.CTkFrame):
         self.progress_bar.grid(row=0, column=0, padx=0, pady=0, sticky="ew")
         
         self.progress_text = ctk.CTkLabel(self, text="0 of 0 files processed")
-        self.progress_text.grid(row=1, column=0, padx=0, pady=0, sticky="ew")
+        self.progress_text.grid(row=1, column=0, padx=0, pady=(10, 0), sticky="ew")
+        
+        self.start_size = 0
+        self.end_size = 0
+        self.diff_size = 0
+        self.total_saved = 0
         
         self.processed = 0
         self.total = 0
@@ -169,7 +174,11 @@ class ProgressWindow(ctk.CTkFrame):
         
         self.error_text = None
     
-    def start(self):
+    def start(self, input_dir, output_dir):
+        self.input_dir = input_dir
+        self.output_dir = output_dir
+        
+        self.start_size = dir_size_bytes(input_dir)
         self.error_text = None
         self.start_time = perf_counter()
         
@@ -185,7 +194,12 @@ class ProgressWindow(ctk.CTkFrame):
         
         self.end_time = perf_counter()
         self.perftime = round(self.end_time - self.start_time, 2)
-        self.progress_text.configure(text=f"Optimization complete: {self.processed} of {self.total} files processed in {self.perftime} seconds")
+        
+        self.end_size = dir_size_bytes(self.output_dir)
+        self.diff_size = self.start_size - self.end_size
+        self.total_saved += self.diff_size
+        
+        self.progress_text.configure(text=f"Optimization complete: {self.processed} of {self.total} files processed in {self.perftime} seconds, saving {round(self.diff_size / 1024**2, 1)} MB\nTotal saved so far: {round(self.total_saved / 1024**2, 1)} MB")
         
     def error(self, error_text):
         self.error_text = error_text
@@ -226,6 +240,9 @@ class OptimizationButton(ctk.CTkFrame):
         self.desc_widget = desc_widget
         self.progress_window = progress_window
         self.folder_selection = folder_selection
+        
+        self.input_dir = None
+        self.output_dir = None
 
         self.grid_columnconfigure((0, 1), weight=1, uniform="group1")
 
@@ -283,16 +300,23 @@ class OptimizationButton(ctk.CTkFrame):
         self.quality_label.configure(text=f"{int(self.quality_slider.get())}")
 
     def button_callback(self):
-        input_path = self.get_input()
-        output_path = self.get_output() or input_path
+        input_path_str = self.get_input()
+        output_path_str = self.get_output() or input_path_str
 
-        if not input_path:
+        if not input_path_str:
+            self.folder_selection.on_empty()
+            return
+        
+        self.input_dir = Path(input_path_str)
+        self.output_dir = Path(output_path_str)
+        
+        if not self.input_dir.exists():
             self.folder_selection.on_empty()
             return
         
         kwargs = {
-            "input_dir": Path(input_path),
-            "output_dir": Path(output_path),
+            "input_dir": self.input_dir,
+            "output_dir": self.output_dir,
         }
 
         if self.level_range is not None:
@@ -314,7 +338,7 @@ class OptimizationButton(ctk.CTkFrame):
                 daemon=True
                 )
 
-        self.progress_window.start()
+        self.progress_window.start(input_dir=self.input_dir, output_dir=self.output_dir)
         optimization_thread.start()
         self.monitor_button_callback_thread(optimization_thread)
 
@@ -356,7 +380,7 @@ class App(ctk.CTk):
                                                  label="Select Input Folder", 
                                                  placeholder_text="",
                                                  tip_text="File path to input folder",
-                                                 on_empty_text="Please select an input folder"
+                                                 on_empty_text="Please select an existing input folder"
                                                 )
         self.input_frame.grid(row=1, column=0, padx=0, pady=(3, 0), sticky="nsew")
 
