@@ -185,7 +185,7 @@ class ProgressWindow(ctk.CTkFrame):
     def update(self, processed: int, total: int):
         self.processed = processed
         self.total = total
-        self.progress_bar.set(self.processed/self.total)
+        self.progress_bar.set(self.processed/self.total if total != 0 else 0)
         self.progress_text.configure(text=f"{self.processed} of {self.total} files processed")
     
     def complete(self):
