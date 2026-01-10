@@ -195,11 +195,14 @@ class ProgressWindow(ctk.CTkFrame):
         self.end_time = perf_counter()
         self.perftime = round(self.end_time - self.start_time, 2)
         
-        self.end_size = dir_size_bytes(self.output_dir)
-        self.diff_size = self.start_size - self.end_size
-        self.total_saved += self.diff_size
-        
-        self.progress_text.configure(text=f"Optimization complete: {self.processed} of {self.total} files processed in {self.perftime} seconds, saving {round(self.diff_size / 1024**2, 1)} MB\nTotal saved so far: {round(self.total_saved / 1024**2, 1)} MB")
+        if self.input_dir == self.output_dir:
+            self.end_size = dir_size_bytes(self.output_dir)
+            self.diff_size = self.start_size - self.end_size
+            self.total_saved += self.diff_size
+            
+            self.progress_text.configure(text=f"Optimization complete: {self.processed} of {self.total} files processed in {self.perftime} seconds, saving {round(self.diff_size / 1024**2, 1)} MB\nTotal saved so far: {round(self.total_saved / 1024**2, 1)} MB")
+        else:
+            self.progress_text.configure(text=f"Optimization complete: {self.processed} of {self.total} files processed in {self.perftime} seconds")
         
     def error(self, error_text):
         self.error_text = error_text
