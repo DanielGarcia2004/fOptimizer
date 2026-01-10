@@ -46,10 +46,12 @@ def remove_unused_files(input_dir: Path, output_dir: Path, remove: bool, progres
     """
 
     try:
+        if progress_window: progress_window.update(0, 0)
+        
         if not input_dir.is_dir():
             if progress_window: progress_window.error("Remove Unused Files failed: Input folder was not a folder, or does not exist.")
             return False
-        
+                
         if remove:
             del_dir = input_dir
         else:
