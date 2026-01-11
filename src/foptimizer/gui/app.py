@@ -14,7 +14,7 @@ ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("assets/foptimizer-theme.json")
 
 DEFAULT_WIDTH = 800
-DEFAULT_HEIGHT = 600
+DEFAULT_HEIGHT = 640
 
 """
     "Name": {
@@ -28,6 +28,17 @@ DEFAULT_HEIGHT = 600
 """
 
 OPTIMIZATIONS = {
+    "Remove Base Game Content": {
+        "description": (
+            "Removes all content from the input folder which are already included in the "
+            "selected game's base content. (VPK's)"
+        ),
+        "lossless_option": None,
+        "level_range": None,
+        "remove_option": None,
+        "one_click": True,
+        "function": backend.logic_remove_vpk_files,
+    },
     "Remove Duplicate VTFs": {
         "description": (
             "Collects all duplicate VTF images into a shared directory and redirects "

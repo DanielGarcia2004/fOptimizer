@@ -1,6 +1,11 @@
 import hashlib
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
+from tkinter import filedialog
+from time import perf_counter
+
+from sourcepp import vpkpp
 
 from .misc import exception_logger, fop_copy
 
@@ -103,6 +108,9 @@ VMT_REGEX = re.compile(
 )
 
 
+vpk_files = set()
+
+
 def get_head_directories(input_dir: Path, target_dir: str) -> tuple[Path]:
     """
     Computes a tuple of Paths who are the heads of directories i.e. materials/ folder.
@@ -130,6 +138,14 @@ def get_head_directories(input_dir: Path, target_dir: str) -> tuple[Path]:
         return set()
 
 
+def _hash_vtf_worker(vtf_path: Path):
+    try:
+        vtf_hash = hashlib.md5(vtf_path.read_bytes()).hexdigest()
+        return vtf_path, vtf_hash
+    except Exception as e:
+        return vtf_path, e
+
+
 def get_duplicate_hash_vtfs(input_dir: Path) -> dict:
     """
     Computes a dictionary of VTF filepaths and their MD5 hashes.
@@ -139,16 +155,27 @@ def get_duplicate_hash_vtfs(input_dir: Path) -> dict:
     :return: A dictionary containing a VTF filepath keys and their MD5 hash values.
     :rtype: dict
     """
-
     try:
+        vtf_paths = list(input_dir.rglob("*.vtf"))
         hashes = {}
-        for vtf_path in input_dir.rglob("*.vtf"):
-            vtf_hash = hashlib.md5(vtf_path.read_bytes()).hexdigest()
 
-            if vtf_hash in hashes:
-                hashes[vtf_hash].append(vtf_path)
-            else:
-                hashes[vtf_hash] = [vtf_path]
+        with ThreadPoolExecutor() as executor:
+            futures = {}
+            for path in vtf_paths:
+                vtf_hash = executor.submit(_hash_vtf_worker, path)
+                futures[vtf_hash] = path
+
+            for future in as_completed(futures):
+                try:
+                    vtf_path, vtf_hash = future.result()
+
+                    if vtf_hash not in hashes:
+                        hashes[vtf_hash] = [vtf_path]
+                    else:
+                        hashes[vtf_hash].append(vtf_path)
+
+                except Exception as e:
+                    print(f"Thread error: {e}")
 
         duplicates = {}
         for vtf_hash, paths in hashes.items():
@@ -222,7 +249,7 @@ def remove_duplicate_vtfs(
         if not materials_roots:
             if progress_window:
                 progress_window.error(
-                    "Remove Duplicate VTFs failed: No 'materials/' subfolders found."
+                    "Remove Duplicate VTFs failed: No 'materials/' subfolders found in input folder."
                 )
             return False
 
@@ -299,7 +326,7 @@ def remove_duplicate_vtfs(
                     vmt_path.write_text(content, encoding="latin-1")
 
                 processed += 1
-                if progress_window:
+                if progress_window and (processed % 10 == 0 or processed == total):
                     progress_window.update(processed, total)
 
         return True
@@ -307,4 +334,95 @@ def remove_duplicate_vtfs(
         exception_logger(e)
         if progress_window:
             progress_window.error("Remove Duplicate VTFs failed with an unknown error.")
+        return False
+
+
+def _remove_vpk_files_worker(f_path: Path, input_dir: Path, output_dir: Path):
+    try:
+        if not f_path.is_file():
+            return None
+
+        rel_path = f_path.relative_to(input_dir)
+        match_found = False
+
+        for i in range(len(rel_path.parts)):
+            suffix_path = "/".join(rel_path.parts[i:]).lower()
+            if suffix_path in vpk_files:
+                match_found = True
+                break
+
+        if match_found:
+            if output_dir != input_dir:
+                dst = output_dir / rel_path
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                fop_copy(src=f_path, dst=dst, mode=1)
+            else:
+                f_path.unlink()
+        return True
+    except Exception as e:
+        return e
+
+
+def remove_vpk_files(
+    input_dir: Path, output_dir: Path, vpk_dir: Path = None, progress_window=None
+):
+    try:
+        if not input_dir.is_dir():
+            if progress_window:
+                progress_window.error(
+                    "Remove VPK files failed: "
+                    "Input folder was not a folder, or does not exist."
+                )
+            return False
+
+        if not vpk_dir:
+            vpk_dir = filedialog.askdirectory(title="Select Game Directory")
+            if not vpk_dir:
+                if progress_window:
+                    progress_window.error(
+                        "Remove VPK files failed: No game folder was selected by the user."
+                    )
+                return False
+
+        vpk_dir = Path(vpk_dir)
+
+        vpk_files.clear()
+        for vpk_file in vpk_dir.rglob("*_dir.vpk"):
+            vpkpp.VPK.open(
+                str(vpk_file),
+                lambda path, _: vpk_files.add(path.lower().replace("\\", "/")),
+            )
+
+        if not vpk_files:
+            if progress_window:
+                progress_window.error(
+                    "Remove VPK files failed: No VPKs were found in the game directory."
+                )
+            return False
+
+        all_files = [f for f in input_dir.rglob("*") if f.is_file()]
+        total = len(all_files)
+
+        with ThreadPoolExecutor() as executor:
+            futures = {}
+            for f in all_files:
+                future = executor.submit(
+                    _remove_vpk_files_worker, f, input_dir, output_dir
+                )
+                futures[future] = f
+
+            for i, future in enumerate(as_completed(futures), 1):
+                try:
+                    future.result()
+                except Exception as e:
+                    print(f"Error processing {futures[future].name}: {e}")
+
+                if progress_window and (i % 10 == 0 or i == total):
+                    progress_window.update(i, total)
+
+        return True
+    except Exception as e:
+        exception_logger(e)
+        if progress_window:
+            progress_window.error("Remove VPK files failed with an unknown error.")
         return False

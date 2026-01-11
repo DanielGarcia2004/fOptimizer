@@ -3,7 +3,7 @@ from pathlib import Path
 
 from .tools.audio_conversion import wav_to_ogg
 from .tools.image_conversion import fit_alpha, halve_normal, optimize_png, shrink_solid
-from .tools.patcher import remove_duplicate_vtfs
+from .tools.deduplication import remove_duplicate_vtfs, remove_vpk_files
 from .tools.remove_redundancies import remove_unaccessed_vtfs, remove_unused_files
 
 
@@ -49,7 +49,7 @@ def handle_batch_parallel(
             except Exception as e:
                 print(f"Error processing {futures[future].name}: {e}")
 
-            if progress_window:
+            if progress_window and (i % 10 == 0 or i == total):
                 progress_window.update(i, total)
 
 
@@ -148,5 +148,13 @@ def logic_remove_duplicate_vtfs(
     input_dir: Path, output_dir: Path, progress_window=None
 ):
     remove_duplicate_vtfs(
+        input_dir=input_dir, output_dir=output_dir, progress_window=progress_window
+    )
+
+
+def logic_remove_vpk_files(
+    input_dir: Path, output_dir: Path, progress_window=None
+):
+    remove_vpk_files(
         input_dir=input_dir, output_dir=output_dir, progress_window=progress_window
     )

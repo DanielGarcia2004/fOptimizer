@@ -2,7 +2,7 @@ import shutil
 from pathlib import Path
 
 from .misc import exception_logger, fop_copy
-from .patcher import get_head_directories, get_vmt_dependencies
+from .deduplication import get_head_directories, get_vmt_dependencies
 
 
 FILE_BLACKLIST = (
