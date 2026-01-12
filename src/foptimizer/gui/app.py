@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import threading
 from pathlib import Path
 from time import perf_counter
