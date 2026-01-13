@@ -332,6 +332,7 @@ def resize_vtf(
         vtf.set_size(width, height, vtfpp.ImageConversion.ResizeFilter.NICE)
         if flag_index:
             vtf.add_flags(1 << flag_index)
+
         vtf.bake_to_file(output_file)
         return True
 

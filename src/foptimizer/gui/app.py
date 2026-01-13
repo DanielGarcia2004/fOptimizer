@@ -3,7 +3,6 @@
 import threading
 from pathlib import Path
 from time import perf_counter
-from tkinter import filedialog
 
 import customtkinter as ctk
 from CTkToolTip import CTkToolTip as tip
@@ -163,7 +162,7 @@ class FolderSelectionFrame(ctk.CTkFrame):
         tip(self.field, tip_text)
 
     def browse(self):
-        folder = filedialog.askdirectory(title="Select Folder")
+        folder = ctk.filedialog.askdirectory(title="Select Folder")
         if folder:
             self.field.delete(0, "end")
             self.field.insert(0, folder)
@@ -375,6 +374,7 @@ class OptimizationButton(ctk.CTkFrame):
             self.quality_label.grid(
                 row=0, column=col_index, padx=5, pady=0, sticky="ew"
             )
+            
             col_index += 1
 
             tip(
@@ -395,7 +395,9 @@ class OptimizationButton(ctk.CTkFrame):
                 checkbox_width=20,
                 border_width=1,
             )
-            lossless_option and self.lossless_check.toggle()
+            if lossless_option:
+                self.lossless_check.toggle()
+
             self.lossless_check.grid(
                 row=0, column=col_index, padx=5, pady=0, sticky="ew"
             )
@@ -416,7 +418,9 @@ class OptimizationButton(ctk.CTkFrame):
                 checkbox_width=20,
                 border_width=1,
             )
-            remove_option and self.remove_check.toggle()
+            if remove_option:
+                self.remove_check.toggle()
+
             self.remove_check.grid(row=0, column=col_index, padx=5, pady=0, sticky="ew")
             col_index += 1
 
