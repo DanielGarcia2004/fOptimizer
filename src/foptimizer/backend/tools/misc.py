@@ -1,6 +1,5 @@
 import traceback
 import shutil
-import os
 from pathlib import Path
 
 import tomllib

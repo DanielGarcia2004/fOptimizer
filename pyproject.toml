@@ -1,6 +1,6 @@
 [project]
 name = "fOptimizer"
-version = "1.5.0"
+version = "1.6.0"
 description = "A Source Engine asset optimization tool for models, textures, and audio."
 readme = "README.md"
 license = {file = "LICENSE"}
@@ -12,6 +12,8 @@ dependencies = [
     "numpy == 2.4.0",
     "customtkinter == 5.2.2",
     "ctktooltip == 0.8",
+    "pydub == 0.25.1",
+    "audioop-lts == 0.2.2",
 ]
 
 [project.urls]

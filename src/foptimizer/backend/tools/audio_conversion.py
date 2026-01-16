@@ -2,7 +2,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-from .misc import exception_logger
+from pydub import AudioSegment
+
+from .misc import exception_logger, fop_copy
 
 if getattr(sys, "frozen", False):
     BASE_DIR = Path(sys.executable).parent
@@ -56,4 +58,40 @@ def wav_to_ogg(
         exception_logger(e)
         if progress_window:
             progress_window.error("WAV to OGG failed with an unknown error.")
+        return False
+
+
+def wav_stereo_to_mono(
+    input_file: Path,
+    output_file: Path,
+    remove: bool = True,
+) -> bool:
+    """
+    Converts a stereo WAV to a mono one, with both channels crushed into one.
+
+    :param input_file: The WAV file to convert.
+    :type input_file: Path
+    :param output_file: The WAV file to write to.
+    :type output_file: Path
+    :param remove: True if the function should remove the stereo WAV from the input directory instead
+        of copying the mono to the output directory.
+    :return: Whether the function completed successfully.
+    :rtype: bool
+    """
+
+    try:
+        input_wav = AudioSegment.from_wav(input_file)
+
+        if input_wav.channels == 2:
+            mono_wav = input_wav.set_channels(1)
+            mono_wav.export(output_file, format="wav")
+            
+            if remove and input_file != output_file:
+                input_file.unlink()
+        else:
+            fop_copy(src=input_file, dst=output_file, mode=1)
+
+        return True
+    except Exception as e:
+        exception_logger(e)
         return False

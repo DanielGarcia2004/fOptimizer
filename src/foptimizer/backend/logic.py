@@ -1,9 +1,9 @@
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
-from .tools.audio_conversion import wav_to_ogg
-from .tools.image_conversion import fit_alpha, halve_normal, optimize_png, shrink_solid
+from .tools.audio_conversion import wav_to_ogg, wav_stereo_to_mono
 from .tools.deduplication import remove_duplicate_vtfs, remove_vpk_files
+from .tools.image_conversion import fit_alpha, halve_normal, optimize_png, shrink_solid
 from .tools.remove_redundancies import remove_unaccessed_vtfs, remove_unused_files
 
 
@@ -157,4 +157,20 @@ def logic_remove_vpk_files(
 ):
     remove_vpk_files(
         input_dir=input_dir, output_dir=output_dir, progress_window=progress_window
+    )
+
+
+def logic_wav_stereo_to_mono(
+    input_dir: Path,
+    output_dir: Path,
+    remove: bool = True,
+    progress_window=None,
+):
+    handle_batch_parallel(
+        input_dir=input_dir,
+        output_dir=output_dir,
+        ext=("wav", "wav"),
+        opt_func=wav_stereo_to_mono,
+        progress_window=progress_window,
+        remove=remove,
     )

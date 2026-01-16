@@ -92,6 +92,27 @@ OPTIMIZATIONS = {
         "one_click": True,
         "function": backend.logic_remove_unaccessed_vtfs,
     },
+    "PNG Optimization": {
+        "description": "Optimizes PNG images and strips unnecessary metadata.",
+        "lossless_option": False,
+        "level_range": (0, 100, 75),
+        "remove_option": None,
+        "one_click": True,
+        "function": backend.logic_optimize_png,
+    },
+    "Stereo WAV to Mono": {
+        "description": (
+            "Maps all stereo WAVs' two channels to a single one, trading spatiality loss "
+            "to exactly halve their filesizes i.e. sum to mono. This may fix broken "
+            "directionality, where sounds are played at the same volume in both ears "
+            "even when the player's head is turned."
+        ),
+        "lossless_option": None,
+        "level_range": None,
+        "remove_option": True,
+        "one_click": True,
+        "function": backend.logic_wav_stereo_to_mono,
+    },
     "Halve Normals": {
         "description": (
             "Halves the dimensions of all normal map VTF images. "
@@ -102,14 +123,6 @@ OPTIMIZATIONS = {
         "remove_option": None,
         "one_click": True,
         "function": backend.logic_halve_normals,
-    },
-    "PNG Optimization": {
-        "description": "Optimizes PNG images and strips unnecessary metadata.",
-        "lossless_option": False,
-        "level_range": (0, 100, 75),
-        "remove_option": None,
-        "one_click": True,
-        "function": backend.logic_optimize_png,
     },
     "WAV to OGG": {
         "description": (
