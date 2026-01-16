@@ -16,6 +16,9 @@ dependencies = [
     "audioop-lts == 0.2.2",
 ]
 
+[project.scripts]
+foptimizer = "foptimizer.gui.app:main"
+
 [project.urls]
 Homepage = "https://github.com/fxington/foptimizer"
 

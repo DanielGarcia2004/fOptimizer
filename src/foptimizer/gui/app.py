@@ -590,6 +590,9 @@ class App(ctk.CTk):
                 self.optimization_buttons[name] = btn
 
 
-if __name__ == "__main__":
+def main():
     foptimizer = App()
     foptimizer.mainloop()
+
+if __name__ == "__main__":
+    main()
