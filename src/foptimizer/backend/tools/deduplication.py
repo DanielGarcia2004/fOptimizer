@@ -124,18 +124,24 @@ def get_head_directories(input_dir: Path, target_dir: str) -> tuple[Path]:
     """
     try:
         found_heads = set()
-        if input_dir.name.lower() == target_dir.lower():
+        target_name = target_dir.lower()
+
+        if input_dir.name.lower() == target_name:
             found_heads.add(input_dir)
+            return tuple(found_heads)
 
-        for p in input_dir.rglob(target_dir):
-            if p.is_dir():
-                found_heads.add(p)
+        for p in input_dir.rglob("*"):
+            if p.is_dir() and p.name.lower() == target_name:
+                occurrence_count = sum(1 for part in p.parts if part.lower() == target_name)
+                
+                if occurrence_count == 1:
+                    found_heads.add(p)
 
-        return found_heads
+        return tuple(found_heads)
 
     except Exception as e:
         exception_logger(e)
-        return set()
+        return tuple()
 
 
 def _hash_vtf_worker(vtf_path: Path):
