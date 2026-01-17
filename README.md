@@ -1,7 +1,12 @@
-# fOptimizer
-![Version](https://img.shields.io/github/v/release/fxington/fOptimizer?color=orange)
+<div align="center">
+
+# fOptimizer <br> ![Progress Bar](assets/progress_bar_looponce.gif)
+
+[![Version](https://img.shields.io/github/v/release/fxington/fOptimizer?color=orange)](https://github.com/fxington/foptimizer/releases)
 ![License](https://img.shields.io/github/license/fxington/foptimizer)
 ![Issues](https://img.shields.io/github/issues/fxington/foptimizer)
+
+</div>
 
 ## Overview
 
