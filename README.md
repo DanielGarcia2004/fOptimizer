@@ -6,6 +6,17 @@
 ![License](https://img.shields.io/github/license/fxington/foptimizer)
 ![Issues](https://img.shields.io/github/issues/fxington/foptimizer)
 
+### Benchmarks
+(as of January 16, 2025)
+| Content | Original Size | fOptimized Size | Compression* |
+| :--- | :---: | :--- | :---: |
+| Project: Synapse / HL2RP | 9.58 GB | 5.57 GB | ![projectsynpasehl2rp](https://geps.dev/progress/58?dangerColor=006600&warningColor=006600&successColor=006600) |
+| Mutiny Network / DarkRP | 3.51 GB | 2.26 GB | ![mutinydrp](https://geps.dev/progress/64?dangerColor=006600&warningColor=006600&successColor=006600) |
+| Civil Networks / SCPRP | 12.6 GB | 8.66 GB | ![civilscprp](https://geps.dev/progress/69?dangerColor=006600&warningColor=006600&successColor=006600) |
+| Icefuse Networks / ImperialRP | 9.97 GB | 7.09 GB | ![icefuseimprp](https://geps.dev/progress/71?dangerColor=006600&warningColor=006600&successColor=006600) |
+| Sunrust / Zombie Survival (no maps) | 4.87 GB | 3.82 GB | ![sunrustzs](https://geps.dev/progress/78?dangerColor=006600&warningColor=006600&successColor=006600) |
+\*fOptimized filesize as a percentage of original filesize (one-click optimizations, default settings)
+
 </div>
 
 ## Overview
