@@ -31,9 +31,6 @@ def remove_unused_files(
     """
 
     try:
-        if progress_window:
-            progress_window.update(0, 0)
-
         if not input_dir.is_dir():
             if progress_window:
                 progress_window.error(
@@ -57,7 +54,7 @@ def remove_unused_files(
                 f.unlink()
 
                 processed += 1
-                if progress_window:
+                if progress_window and (processed % 10 == 0 or processed == total):
                     progress_window.update(processed, total)
 
         return True
@@ -138,7 +135,7 @@ def remove_unaccessed_vtfs(
                         fop_copy(src=vtf_path, dst=target_path, mode=2)
 
                 processed += 1
-                if progress_window:
+                if progress_window and (processed % 10 == 0 or processed == total):
                     progress_window.update(processed, total)
 
             if not remove:
@@ -148,7 +145,7 @@ def remove_unaccessed_vtfs(
                     fop_copy(src=vmt_path, dst=target_path, mode=2)
 
                     processed += 1
-                    if progress_window:
+                    if progress_window and (processed % 10 == 0 or processed == total):
                         progress_window.update(processed, total)
 
         return True
